@@ -5,16 +5,18 @@ const algorithms = {
   seedFill: require('./seed-fill')
 };
 
+const { performance } = require('perf_hooks');
+
 // validate command line arguments
 const { argv } = require('yargs')
-  .usage('Usage: $0 -a algorithm -p polygon -s size')
+  .usage('Usage: $0 -a algorithm -p polygon -s size -t tests')
   .example(
     '$0 -a slpf -p star -s 1024',
     'Run SLPF to draw a star of size 1024'
   )
   .example(
-    '$0 -a seedFill -p diamond',
-    'Run Seed Fill to draw a diamond of size 512'
+    '$0 -a seedFill -p diamond -t 10',
+    'Run Seed Fill to draw a diamond of size 512 ten times'
   )
   .options({
     'a': {
@@ -40,6 +42,13 @@ const { argv } = require('yargs')
       description: 'Chosen size to draw at',
       requiresArg: true,
       type: 'number'
+    },
+    't': {
+      alias: 'tests',
+      default: 1,
+      description: 'Chosen number of tests to average over',
+      requiresArg: true,
+      type: 'number'
     }
   })
   .alias('h', 'help')
@@ -51,10 +60,17 @@ const { argv } = require('yargs')
 // read in command line arguments
 const { algorithm, polygon } = argv;
 const size = Math.floor(argv.size);
+const tests = Math.floor(argv.tests);
 
 // validate size argument
 if(size < 4) {
-  console.error('size argument must be larger than 4');
+  console.error('size argument must be at least 4');
+  process.exit(1);
+}
+
+// validate tests argument
+if(tests < 1) {
+  console.error('tests argument must be at least 1');
   process.exit(1);
 }
 
@@ -90,6 +106,10 @@ const shapes = {
 
 // benchmark algorithm
 const label = `${algorithm} (${size}px ${polygon})`;
-console.time(label);
-algorithms[algorithm](shapes[polygon], [], [W >> 1, H >> 1]);
-console.timeEnd(label);
+let timeElapsed = 0;
+for(let i = 0; i < tests; i++) {
+  const start = performance.now();
+  algorithms[algorithm](shapes[polygon], [], [W >> 1, H >> 1]);
+  timeElapsed += performance.now() - start;
+}
+console.log(`${label}: ${(timeElapsed / tests).toFixed(3)}ms`);
