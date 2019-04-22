@@ -1,0 +1,27 @@
+{
+  "name": "polygon-fill-benchmark",
+  "version": "1.0.0",
+  "description": "Benchmarks two separate polygon filling algorithms on polygons of different shapes and sizes.",
+  "main": "test.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kamoroso94/polygon-fill-benchmark.git"
+  },
+  "keywords": [
+    "polygon-fill",
+    "benchmark",
+    "nodejs"
+  ],
+  "author": "Kyle Amoroso",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/kamoroso94/polygon-fill-benchmark/issues"
+  },
+  "homepage": "https://github.com/kamoroso94/polygon-fill-benchmark#readme",
+  "dependencies": {
+    "yargs": "^13.2.2"
+  }
+}
