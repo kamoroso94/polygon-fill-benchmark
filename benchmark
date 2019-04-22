@@ -108,8 +108,8 @@ const shapes = {
 const label = `${algorithm} (${size}px ${polygon})`;
 let timeElapsed = 0;
 for(let i = 0; i < tests; i++) {
-  const start = performance.now();
-  algorithms[algorithm](shapes[polygon], [], [W >> 1, H >> 1]);
-  timeElapsed += performance.now() - start;
+  const t0 = performance.now();
+  algorithms[algorithm](shapes[polygon], [], [W >> 1, H >> 2]);
+  timeElapsed += performance.now() - t0;
 }
 console.log(`${label}: ${(timeElapsed / tests).toFixed(3)}ms`);
