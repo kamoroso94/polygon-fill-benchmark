@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+const algorithms = {
+  slpf: require('./slpf'),
+  seedFill: require('./seed-fill')
+};
+
+// validate command line arguments
 const { argv } = require('yargs')
   .usage('Usage: $0 -a algorithm -p polygon -s size')
   .example(
@@ -42,165 +48,48 @@ const { argv } = require('yargs')
   .version(false)
   .strict();
 
-const { algorithm, polygon, size } = argv;
+// read in command line arguments
+const { algorithm, polygon } = argv;
+const size = Math.floor(argv.size);
 
+// validate size argument
+if(size < 4) {
+  console.error('size argument must be larger than 4');
+  process.exit(1);
+}
+
+// setup shapes
 const W = size;
 const H = size;
-const img = [];
-const getPixel = (x, y) => (img[x]||[])[y];
-const setPixel = (x, y) => (img[x]||(img[x]=[]))[y] = true;
-const algorithms = { slpf, seedFill };
 const shapes = {
   square: [
     [1, 1],
-    [W-1, 1],
-    [W-1, H-1],
-    [1, H-1]
+    [W - 1, 1],
+    [W - 1, H - 1],
+    [1, H - 1]
   ],
   diamond: [
-    [0, H/2],
-    [W/2, 0],
-    [W, H/2],
-    [W/2, H]
+    [0, H >> 1],
+    [W >> 1, 0],
+    [W, H >> 1],
+    [W >> 1, H]
   ],
   star: [
-    [W/2, 0],
-    [3*W/4, H/4],
-    [W, H/4],
-    [3*W/4, H/2],
+    [W >> 1, 0],
+    [3 * W >> 2, H >> 2],
+    [W, H >> 2],
+    [3 * W >> 2, H >> 1],
     [W, H],
-    [W/2, 3*H/4],
+    [W >> 1, 3 * H >> 2],
     [0, H],
-    [W/4, H/2],
-    [0, H/4],
-    [W/4, H/4]
+    [W >> 2, H >> 1],
+    [0, H >> 2],
+    [W >> 2, H >> 2]
   ]
 };
 
+// benchmark algorithm
 const label = `${algorithm} (${size}px ${polygon})`;
 console.time(label);
-algorithms[algorithm](shapes[polygon], [W/2, H/2]);
+algorithms[algorithm](shapes[polygon], [], [W >> 1, H >> 1]);
 console.timeEnd(label);
-
-///////////////SLPF/////////////////
-
-function slpf(points) {
-  if(points.length < 3) return;
-  
-  const ET = pointsToEdges(points)
-    .sort((e1, e2) => getYMin(e2) - getYMin(e1));
-  const AET = [];
-  let yScan = getYMin(ET[ET.length - 1]);
-  
-  while(ET.length > 0 || AET.length > 0) {
-    moveEdges(yScan, ET, AET);
-    removeEdges(yScan, AET);
-    AET.sort((e1, e2) => {
-    	const c = getXofYMin(e1) - getXofYMin(e2);
-      return c == 0 ? getXofYMax(e1) - getXofYMax(e2) : c;
-    });
-    const spans = getSpans(yScan, AET);
-    drawSpans(spans, yScan, setPixel);
-    yScan++;
-  }
-}
-
-function getSpans(yScan, AET) {
-  const spans = [];
-  for(const edge of AET) {
-    spans.push(lerp(yScan, edge));
-  }
-  return spans;
-}
-
-function drawSpans(spans, yScan, setPixel) {
-  for(let i = 0; i < spans.length; i += 2) {
-    fillSpan(spans[i], spans[i + 1], yScan, setPixel);
-  }
-}
-
-function fillSpan(x1, x2, y, setPixel) {
-  for(let x = x1; x < x2; x++) {
-    setPixel(x, y);
-  }
-}
-
-function lerp(yScan, [[x1, y1], [x2, y2]]) {
-  return Math.floor((yScan - y1) / (y2 - y1) * (x2 - x1) + x1);
-}
-
-function moveEdges(yScan, ET, AET) {
-  while(ET.length > 0 && yScan == getYMin(ET[ET.length - 1])) {
-    AET.push(ET.pop());
-  }
-}
-
-function removeEdges(yScan, AET) {
-  for(let i = 0; i < AET.length; i++) {
-    if(yScan >= getYMax(AET[i])) {
-      const last = AET.pop();
-      if(i < AET.length) {
-        AET[i] = last;
-        i--;
-      }
-    }
-  }
-}
-
-function pointsToEdges(points) {
-  let edges = [];
-  let p1 = points[points.length - 1];
-  for(let i = 0; i < points.length; i++) {
-    const p2 = points[i];
-    if(p1[1] != p2[1]) edges.push([p1, p2]);
-    p1 = p2;
-  }
-  return edges;
-}
-
-function getYMin([[, y1], [, y2]]) {
-  return y1 <= y2 ? y1 : y2;
-}
-function getYMax([[, y1], [, y2]]) {
-  return y1 > y2 ? y1 : y2;
-}
-function getXofYMin([[x1, y1], [x2, y2]]) {
-  return y1 <= y2 ? x1 : x2;
-}
-function getXofYMax([[x1, y1], [x2, y2]]) {
-  return y1 > y2 ? x1 : x2;
-}
-
-////////////SEED FILL////////////
-
-function seedFill(points, seed) {
-  if(points.length < 3) return;
-  
-  const edges = pointsToEdges(points);
-  if(!oddEvenRule(seed, edges)) throw new Error('seed not in polygon');
-
-  const stack = [seed];
-  while(stack.length > 0) {
-    const [x, y] = stack.pop();
-    setPixel(x, y);
-    for(let h = -1; h <= 1; h++) {
-      for(let k = -1; k <= 1; k++) {
-        if(h != 0 && k != 0 || h == 0 && k == 0) continue;
-        const point = [x + h, y + k];
-        if(!getPixel(...point) && oddEvenRule(point, edges)) {
-          stack.push(point);
-        }
-      }
-    }
-  }
-}
-
-function oddEvenRule([x, y], edges) {
-  let isIn = false;
-  for(const edge of edges) {
-    if(y >= getYMin(edge) && y < getYMax(edge)) {
-      if(lerp(y, edge) >= x) isIn = !isIn;
-    }
-  }
-  return isIn;
-}
